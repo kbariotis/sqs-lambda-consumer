@@ -1,0 +1,53 @@
+service: sqs-lambda-consumer
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  profile: ${opt:stage}
+  stage: ${opt:stage}
+  region: eu-west-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - lambda:InvokeFunction
+        - lambda:InvokeAsync
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - sqs:SendMessageBatch
+        - sqs:ReceiveMessage
+        - sqs:DeleteMessage
+      Resource:
+        - { "Fn::GetAtt": [ "ExampleQueue", "Arn" ] }
+
+functions:
+  feed:
+    handler: src/handlers/feed.handler
+  queueHandler:
+    handler: src/handlers/queueHandler.handler
+    timeout: 900
+    reservedConcurrency: 1
+    environment:
+      EXAMPLE_QUEUE_URL:
+        Ref: ExampleQueue
+    events:
+      - schedule: rate(1 minute)
+
+resources:
+  Resources:
+
+    # Input queue
+    # Manualy fed by another Lambda
+    ExampleQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ExampleQueue
+        RedrivePolicy:
+          deadLetterTargetArn: { "Fn::GetAtt": [ "ExampleDLQueue", "Arn" ] }
+          maxReceiveCount: 3
+    ExampleDLQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ExampleDLQueue
+
+  Outputs:

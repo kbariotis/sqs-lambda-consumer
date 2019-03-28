@@ -1,0 +1,8 @@
+{
+  "name": "sqs-lambda-consumer",
+  "private": true,
+  "dependencies": {
+    "aws-sdk": "^2.431.0",
+    "bluebird": "^3.5.3"
+  }
+}
