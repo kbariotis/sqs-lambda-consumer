@@ -1,18 +1,28 @@
 
 const Promise = require('bluebird');
+const AWS = require('aws-sdk');
+const sqs = new AWS.SQS();
+const lambda = new AWS.Lambda();
 
 const queueUrl = process.env.EXAMPLE_QUEUE_URL;
 
+/**
+ * This function will process one message from the queue
+ *
+ * @param {Object} message
+ * @returns {Promise}
+ */
 async function messageHandler(message) {
-  console.log('Process message');
+  console.log(`Processing message ${message.item}`);
 }
 
 /**
- * This is an abstract Lambda worker that is responsible for draining
- * out an SQS queue.
+ * This is an abstract Lambda worker that is responsible for
+ * draining out an SQS queue.
  *
- * It will fetch one message from an SQS queue, hand it down to the
- * passed function, either delete it if it succeeds and then call it self.
+ * It will fetch one message from an SQS queue, hand it down
+ * to the passed function, either delete it if it succeeds and
+ * then call it self.
  */
 return async function lambdaHandler(payload, context) {
   const payload = await sqs
@@ -33,6 +43,8 @@ return async function lambdaHandler(payload, context) {
   }
 
   await Promise.each(payload.Messages, async (message) => {
+    // By default, delete every message after processing
+    // unless it throw an error and we catch it
     let shouldDeleteMessage = true;
 
     try {
@@ -51,8 +63,11 @@ return async function lambdaHandler(payload, context) {
       }).promise();
     }
   })
+    // Call the same Lambda function again
+    // The next invocation will fetch the next 10 messages
+    // from the queue.
     .then(() => lambda.invokeAsync({
-      FunctionName: context.functionName, // Call itself
+      FunctionName: context.functionName,
       InvokeArgs: '{}'
     }).promise());
 };

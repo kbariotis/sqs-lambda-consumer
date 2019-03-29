@@ -21,23 +21,34 @@ provider:
         - { "Fn::GetAtt": [ "ExampleQueue", "Arn" ] }
 
 functions:
+  # Helper function to feed the queue for demonstration
+  # purposes
   feed:
     handler: src/handlers/feed.handler
+    environment:
+      EXAMPLE_QUEUE_URL:
+        Ref: ExampleQueue
+  # The main Queue worker
   queueHandler:
     handler: src/handlers/queueHandler.handler
-    timeout: 900
+    # For the sake of this example, limit to 1 concurrent functions
     reservedConcurrency: 1
     environment:
       EXAMPLE_QUEUE_URL:
         Ref: ExampleQueue
+    # This function will wake it self every minute
+    # to check for messages. If it wakes up and another
+    # instance is running it will be throttled since we
+    # have limit concurrency so only one worker will be
+    # working at all times
     events:
       - schedule: rate(1 minute)
 
 resources:
   Resources:
 
-    # Input queue
-    # Manualy fed by another Lambda
+    # Example queue
+    # Manualy fed by the Feed function
     ExampleQueue:
       Type: AWS::SQS::Queue
       Properties:
